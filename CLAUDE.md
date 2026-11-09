@@ -7,13 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Atlas is an enterprise LLMOps reference platform for a payments company, built as a learning project.
 Its first app, the Dispute Resolution Copilot, classifies card disputes into Visa reason codes; all data is synthetic.
 
-## Layout (planned — create directories as phases need them)
+## Layout (planned: create directories as phases need them)
 
-- `notebooks/` — one notebook per phase; thin, imports logic from `src/atlas/`
-- `src/atlas/` — reusable code (LLM client, prompts, classifiers, evals)
-- `data/samples/` — small synthetic dispute samples
-- `tests/` — pytest tests for `src/atlas/`
-- `docs/` — design notes and phase write-ups
+- `notebooks/`: one notebook per phase; thin, imports logic from `src/atlas/`
+- `src/atlas/`: reusable code (LLM client, prompts, classifiers, evals)
+- `data/samples/`: small synthetic dispute samples
+- `tests/`: pytest tests for `src/atlas/`
+- `docs/`: design notes and phase write-ups
 
 ## Commands
 
@@ -37,6 +37,14 @@ ruff check .                               # lint
 - **No hardcoded model names.** Model and deployment names come from environment variables (for example `ATLAS_MODELS`), never hardcoded.
 - **Small changes.** One phase per pull request; keep diffs small.
 - **Verify before finishing.** Before saying a change is done, run `pytest -q` and `ruff check .`.
+
+## Documentation
+
+- The repo is the portfolio: write for recruiters (README), engineers (docs/architecture, docs/adr) and future revision (docs/phases).
+- During a phase, add short notes to `docs/phases/phase-NN-<name>.md` as work lands.
+- At each milestone tag, update README status, `docs/roadmap.md`, `CHANGELOG.md` and the phase journal.
+- Never include tenant names, subscription IDs, real endpoints or keys in any document.
+- Plain language, no en dashes.
 
 ## Working with me
 

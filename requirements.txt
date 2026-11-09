@@ -1,0 +1,7 @@
+litellm
+python-dotenv
+pandas
+jupyterlab
+ipykernel
+pytest
+ruff

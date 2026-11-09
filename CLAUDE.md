@@ -40,7 +40,7 @@ ruff check .                               # lint
 
 ## Documentation
 
-- The repo is the portfolio: write for recruiters (README), engineers (docs/architecture, docs/adr) and future revision (docs/phases).
+- The repo is the portfolio: write for reviewers (README), engineers (docs/architecture, docs/adr) and future revision (docs/phases).
 - During a phase, add short notes to `docs/phases/phase-NN-<name>.md` as work lands.
 - At each milestone tag, update README status, `docs/roadmap.md`, `CHANGELOG.md` and the phase journal.
 - Never include tenant names, subscription IDs, real endpoints or keys in any document.

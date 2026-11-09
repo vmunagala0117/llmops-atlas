@@ -1,0 +1,47 @@
+# Phase 1: Baseline copilot and model scorecard
+
+## Goal
+
+Prove that Atlas can reach a hosted model through both the vendor SDK and LiteLLM, and record a first baseline of tokens, latency and cost. Later phases measure every change against this baseline.
+
+## Concepts
+
+- **Tokens.** Models read and write in tokens, not words, and billing counts input (prompt) and output (completion) tokens separately. A one-word reply still costs several output tokens.
+- **Reasoning tokens.** Reasoning models "think" before they answer. That thinking is billed as output tokens but never shown in the reply, so a reply can look tiny while the bill is not.
+- **TTFT vs total latency.** Time to first token (TTFT) is how long until the first piece of the answer arrives; total latency is how long until the last one. With streaming, TTFT is what a user feels. For batch work like classifying disputes, total latency and cost matter more.
+- **Why a portable API matters.** If every call goes through one provider-agnostic interface, switching models or vendors becomes a config change instead of a code rewrite. It also gives one place to add logging, cost tracking and test doubles.
+
+## What I built
+
+- Smoke test that reaches gpt-5-mini through the vendor SDK and through LiteLLM (`scripts/smoke_test.py`). It sends "Reply with one word: ready" and prints the reply, token usage and, for LiteLLM, the estimated cost.
+
+## Results
+
+First run, 2026-11-09. Both paths answered "ready". Latency figures are server-reported (`latency_checkpoint` in the usage payload), not measured on the client, and the calls were not streamed.
+
+| Metric | Vendor SDK | LiteLLM |
+| --- | --- | --- |
+| Prompt tokens | 12 | 12 |
+| Completion tokens | 10 | 74 |
+| of which reasoning tokens | 0 | 64 |
+| Total tokens | 22 | 86 |
+| Service TTFT (ms) | 505 | 273 |
+| Service total latency (ms) | 874 | 824 |
+| Estimated cost (USD) | not reported | 0.000151 |
+
+Wall time for the whole script was about 11.7 s, but most of that is Python startup and importing libraries, not the model calls.
+
+## Decisions
+
+- Chat Completions through LiteLLM rather than the Responses API: Chat Completions is the format LiteLLM normalizes across providers, so the same call shape works if we switch models or vendors. The Responses API is specific to one vendor and would tie the code to it.
+
+## Open questions and next experiment
+
+- Does lower reasoning effort keep accuracy while cutting cost?
+- Why did the same prompt use 0 reasoning tokens on the SDK path and 64 on the LiteLLM path? Check whether `ATLAS_MODELS` points to the same deployment, and rerun a few times to see how much reasoning varies between runs.
+- Add client-side timing (and streaming) so TTFT and total latency are measured from our side, not only reported by the service.
+
+## Review questions
+
+- Why do reasoning models cost more than their answer length suggests?
+  Because hidden reasoning tokens are billed as output. In this run, a one-word answer used 74 completion tokens, and 64 of them were reasoning.

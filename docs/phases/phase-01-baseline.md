@@ -19,7 +19,7 @@ Prove that Atlas can reach a hosted model through both the vendor SDK and LiteLL
 - 12 synthetic disputes in `data/samples/disputes_v1.jsonl`. Two are ambiguous on purpose:
   - `D-0007`: tracking says delivered, merchant promised a refund only if the courier confirms the loss. 13.1 vs 13.6, labelled 13.1 because no refund was confirmed.
   - `D-0009`: a meal kit order cancelled before shipping, on a site that calls it a subscription. 13.2 vs 13.7, labelled 13.7 because there was only ever one order.
-- Scorecard (`src/atlas/scorecard.py`) and `notebooks/01_baseline_scorecard.ipynb`, comparing v1/v2 with default and minimal reasoning effort.
+- Scorecard (`src/atlas/scorecard.py`, with reply parsing in `src/atlas/parsing.py`) and `notebooks/01_baseline_scorecard.ipynb`, comparing v1/v2 with default and minimal reasoning effort. Each run saves per-case and summary CSVs with a UTC timestamp, so runs never overwrite each other.
 - CI that runs lint, tests and the notebook in mock mode on every pull request.
 
 ## Results
@@ -45,11 +45,18 @@ Wall time for the whole script was about 11.7 s, but most of that is Python star
 - The v2 tie-breaker is a general rule ("choose the code whose conditions the claim actually shows"), not one that names the answers to `D-0007` and `D-0009`. A prompt written around the test cases would win on them by construction and inflate its score.
 - Every test runs in mock mode through an autouse fixture in `tests/conftest.py`, rather than relying on each test or CI job to set `ATLAS_MOCK=1`: a test someone forgets to mark can never reach a real model, spend money or need the API key.
 - The scorecard records one row per case, not just totals: misses stay inspectable, and the summary is a simple group by on that table.
-- Mock and live scorecard CSVs get different file names (`_mock`, `_live`), and mock ones are git-ignored, so a CI or test run can never overwrite real results.
+- Mock and live scorecard CSVs get different file names (`_mock`, `_live`), and mock ones are git-ignored, so a CI or test run can never overwrite real results. An earlier blanket `results/` ignore rule also hid live results; it was removed.
+- The parser returns the first JSON object in a reply (trying each `{` in turn), not the span from the first `{` to the last `}`, which breaks when a reply contains two objects. Requiring a `reason_code` is a scorecard rule, so it lives in the scorecard, not the parser.
+- Variant names must be unique. The summary groups by name, so two variants with the same name would silently be averaged into one row.
+- Calls run one after another, with an optional pause (`ATLAS_CALL_DELAY_S`, default 0) for a low token-per-minute quota. Otherwise rate-limit errors would count against the prompt, when the real cause is the quota.
+- The notebook uses the first model in `ATLAS_MODELS`. Comparing models is a later experiment.
 
 ## Open questions and next experiment
 
 - Does lower reasoning effort keep accuracy while cutting cost?
+- Is `reasoning_effort="minimal"` actually applied? `call_model` uses `drop_params=True`, so an unsupported setting is dropped silently. If the minimal and default variants show the same reasoning tokens, it probably was not.
+- Latency includes failed calls, so one timeout lifts p95 a lot. Decide whether to report latency for successful calls only as well.
+- Cost reads 0 when LiteLLM has no price for a model, which looks free rather than unknown.
 - Why did the same prompt use 0 reasoning tokens on the SDK path and 64 on the LiteLLM path? Check whether `ATLAS_MODELS` points to the same deployment, and rerun a few times to see how much reasoning varies between runs.
 - Add client-side timing (and streaming) so TTFT and total latency are measured from our side, not only reported by the service.
 

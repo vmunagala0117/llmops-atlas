@@ -1,7 +1,7 @@
 import pytest
 
 from atlas import scorecard
-from atlas.scorecard import parse_response, run_experiment, summarize
+from atlas.scorecard import load_cases, predicted_code, run_experiment, summarize
 
 
 def make_case(case_id, label):
@@ -14,25 +14,6 @@ def make_case(case_id, label):
         "cardholder_claim": "claim",
         "label_reason_code": label,
     }
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        '{"reason_code": "13.1", "confidence": 0.8}',
-        '```json\n{"reason_code": "13.1"}\n```',
-        'Here you go: {"reason_code": " 13.1 "} thanks',
-    ],
-)
-def test_parse_accepts_json_with_noise(text):
-    assert parse_response(text)["reason_code"] == "13.1"
-
-
-@pytest.mark.parametrize(
-    "text", [None, "", "mock reply", "{not json}", '{"confidence": 0.5}', "[1, 2]"]
-)
-def test_parse_rejects_unusable_replies(text):
-    assert parse_response(text) is None
 
 
 def fake_result(text, error=None, latency_ms=100):
@@ -88,3 +69,64 @@ def test_mock_mode_runs_end_to_end():
 
     assert df.loc[0, "error"] is None
     assert not df.loc[0, "valid_json"]
+
+
+def test_predicted_code_needs_a_reason_code():
+    assert predicted_code('Answer: {"reason_code": " 13.1 "}') == "13.1"
+    assert predicted_code('{"confidence": 0.5}') is None
+    assert predicted_code("mock reply") is None
+
+
+def test_load_cases_skips_blank_lines(tmp_path):
+    path = tmp_path / "cases.jsonl"
+    path.write_text('{"case_id": "A"}\n\n{"case_id": "B"}\n')
+
+    assert [c["case_id"] for c in load_cases(path)] == ["A", "B"]
+
+
+def test_summarize_has_one_row_per_variant_and_counts_failures(monkeypatch):
+    def fake_call(model, messages, **params):
+        if model == "broken":
+            return fake_result("", error="RateLimitError: 429")
+        return fake_result('{"reason_code": "13.1"}')
+
+    monkeypatch.setattr(scorecard, "call_model", fake_call)
+    variants = [
+        {"name": "ok", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}},
+        {"name": "down", "prompt_id": "dispute_triage@v1", "model": "broken", "params": {}},
+    ]
+
+    summary = summarize(run_experiment(variants, [make_case("C-1", "13.1")] * 3))
+
+    assert list(summary.index) == ["ok", "down"]
+    assert {
+        "accuracy",
+        "valid_json_rate",
+        "error_rate",
+        "p50_latency_ms",
+        "p95_latency_ms",
+        "avg_reasoning_tokens",
+        "cost_per_1k_usd",
+    } <= set(summary.columns)
+    assert summary.loc["ok", "accuracy"] == 1.0
+    assert summary.loc["down", "error_rate"] == 1.0
+    assert summary.loc["down", "accuracy"] == 0.0
+
+
+def test_duplicate_variant_names_are_rejected():
+    variant = {"name": "same", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}}
+
+    with pytest.raises(ValueError, match="same"):
+        run_experiment([variant, dict(variant)], [make_case("C-1", "13.1")])
+
+
+def test_optional_delay_between_calls(monkeypatch):
+    sleeps = []
+    monkeypatch.setenv("ATLAS_CALL_DELAY_S", "0.5")
+    monkeypatch.setattr(scorecard.time, "sleep", sleeps.append)
+    monkeypatch.setattr(scorecard, "call_model", lambda m, msgs, **p: fake_result("{}"))
+    variant = {"name": "v", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}}
+
+    run_experiment([variant], [make_case(f"C-{i}", "13.1") for i in range(3)])
+
+    assert sleeps == [0.5, 0.5]  # between calls, not before the first

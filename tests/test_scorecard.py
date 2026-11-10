@@ -63,13 +63,14 @@ def test_variant_name_uses_reasoning_effort():
 
 
 def test_mock_mode_runs_end_to_end():
-    # Autouse fixture sets ATLAS_MOCK=1: real call_model, no network, replies are not JSON.
+    # Autouse fixture sets ATLAS_MOCK=1: real call_model, no network, a valid JSON reply.
     variants = [{"prompt_id": "dispute_triage@v2", "model": "openai/atlas-ci-mock", "params": {}}]
 
     df = run_experiment(variants, [make_case("C-1", "13.1")])
 
     assert df.loc[0, "error"] is None
-    assert not df.loc[0, "valid_json"]
+    assert df.loc[0, "valid_json"]
+    assert df.loc[0, "correct"]  # the mock always answers 13.1
 
 
 def test_predicted_code_needs_a_reason_code():

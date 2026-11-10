@@ -1,6 +1,7 @@
 """The single model-call path for Atlas. Every LLM call goes through call_model()."""
 
 import logging
+import math
 import os
 import time
 
@@ -11,7 +12,11 @@ load_dotenv()  # never overrides variables that are already set
 
 logger = logging.getLogger(__name__)
 
-MOCK_REPLY = "mock reply"
+# A valid answer in the prompt's output format, so mock runs exercise parsing and scoring.
+MOCK_REPLY = (
+    '{"reason_code": "13.1", "confidence": 0.5, '
+    '"summary": "Mock reply for offline runs.", "missing_evidence": []}'
+)
 DEFAULT_TIMEOUT_S = 60
 DEFAULT_NUM_RETRIES = 2
 MAX_ERROR_CHARS = 200
@@ -40,10 +45,12 @@ def _short_error(exc: Exception) -> str:
 
 
 def _cost(response) -> float:
+    """Estimated cost in USD, or NaN when it is unknown (so it never reads as free)."""
     try:
-        return float(litellm.completion_cost(completion_response=response) or 0.0)
+        cost = litellm.completion_cost(completion_response=response)
     except Exception:
-        return 0.0  # unknown model price or unexpected response shape
+        return math.nan  # unknown model price or unexpected response shape
+    return math.nan if cost is None else float(cost)
 
 
 def call_model(model: str, messages: list[dict], **params) -> dict:

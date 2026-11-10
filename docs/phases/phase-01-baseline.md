@@ -47,6 +47,8 @@ Wall time for the whole script was about 11.7 s, but most of that is Python star
 - The scorecard records one row per case, not just totals: misses stay inspectable, and the summary is a simple group by on that table.
 - Mock and live scorecard CSVs get different file names (`_mock`, `_live`), and mock ones are git-ignored, so a CI or test run can never overwrite real results. An earlier blanket `results/` ignore rule also hid live results; it was removed.
 - The parser returns the first JSON object in a reply (trying each `{` in turn), not the span from the first `{` to the last `}`, which breaks when a reply contains two objects. Requiring a `reason_code` is a scorecard rule, so it lives in the scorecard, not the parser.
+- In mock mode `call_model` replies with a valid answer in the output format (always 13.1), so CI runs parsing and scoring too, not only the call. Mock accuracy is meaningless: it is just the share of cases labelled 13.1.
+- An unknown price is recorded as NaN, not 0, so a model missing from LiteLLM's price list reads as unknown rather than free. The summary's cost columns skip NaN, and are NaN when no call was priced.
 - Variant names must be unique. The summary groups by name, so two variants with the same name would silently be averaged into one row.
 - Calls run one after another, with an optional pause (`ATLAS_CALL_DELAY_S`, default 0) for a low token-per-minute quota. Otherwise rate-limit errors would count against the prompt, when the real cause is the quota.
 - The notebook uses the first model in `ATLAS_MODELS`. Comparing models is a later experiment.
@@ -57,7 +59,6 @@ Wall time for the whole script was about 11.7 s, but most of that is Python star
 - Does lower reasoning effort keep accuracy while cutting cost?
 - Is `reasoning_effort="minimal"` actually applied? `call_model` uses `drop_params=True`, so an unsupported setting is dropped silently. If the minimal and default variants show the same reasoning tokens, it probably was not. The notebook now prints this check on live runs.
 - Latency includes failed calls, so one timeout lifts p95 a lot. Decide whether to report latency for successful calls only as well.
-- Cost reads 0 when LiteLLM has no price for a model, which looks free rather than unknown.
 - Why did the same prompt use 0 reasoning tokens on the SDK path and 64 on the LiteLLM path? Check whether `ATLAS_MODELS` points to the same deployment, and rerun a few times to see how much reasoning varies between runs.
 - Add client-side timing (and streaming) so TTFT and total latency are measured from our side, not only reported by the service.
 

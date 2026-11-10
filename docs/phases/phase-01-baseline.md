@@ -14,10 +14,13 @@ Prove that Atlas can reach a hosted model through both the vendor SDK and LiteLL
 ## What I built
 
 - Smoke test that reaches gpt-5-mini through the vendor SDK and through LiteLLM (`scripts/smoke_test.py`). It sends "Reply with one word: ready" and prints the reply, token usage and, for LiteLLM, the estimated cost.
+- `call_model()` in `src/atlas/llm.py`: the one path for every model call, with client-side latency, tokens, reasoning tokens, cost, default timeout and retries, and errors returned as values.
 - Versioned prompts `dispute_triage@v1` (zero-shot) and `@v2` (decision rules plus one example) in `src/atlas/prompts.py`.
 - 12 synthetic disputes in `data/samples/disputes_v1.jsonl`. Two are ambiguous on purpose:
   - `D-0007`: tracking says delivered, merchant promised a refund only if the courier confirms the loss. 13.1 vs 13.6, labelled 13.1 because no refund was confirmed.
   - `D-0009`: a meal kit order cancelled before shipping, on a site that calls it a subscription. 13.2 vs 13.7, labelled 13.7 because there was only ever one order.
+- Scorecard (`src/atlas/scorecard.py`) and `notebooks/01_baseline_scorecard.ipynb`, comparing v1/v2 with default and minimal reasoning effort.
+- CI that runs lint, tests and the notebook in mock mode on every pull request.
 
 ## Results
 
@@ -40,6 +43,9 @@ Wall time for the whole script was about 11.7 s, but most of that is Python star
 - Chat Completions through LiteLLM rather than the Responses API: Chat Completions is the format LiteLLM normalizes across providers, so the same call shape works if we switch models or vendors. The Responses API is specific to one vendor and would tie the code to it.
 - A prompt version counts as released once it is merged to main. Until then it can still be edited on its branch; after that, any change means a new version.
 - The v2 tie-breaker is a general rule ("choose the code whose conditions the claim actually shows"), not one that names the answers to `D-0007` and `D-0009`. A prompt written around the test cases would win on them by construction and inflate its score.
+- Every test runs in mock mode through an autouse fixture in `tests/conftest.py`, rather than relying on each test or CI job to set `ATLAS_MOCK=1`: a test someone forgets to mark can never reach a real model, spend money or need the API key.
+- The scorecard records one row per case, not just totals: misses stay inspectable, and the summary is a simple group by on that table.
+- Mock and live scorecard CSVs get different file names (`_mock`, `_live`), and mock ones are git-ignored, so a CI or test run can never overwrite real results.
 
 ## Open questions and next experiment
 

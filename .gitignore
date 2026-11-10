@@ -222,3 +222,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 results/
+# Mock-mode scorecard outputs (CI and local test runs); live results are kept
+results/*_mock.csv

@@ -5,3 +5,4 @@ jupyterlab
 ipykernel
 pytest
 ruff
+tenacity

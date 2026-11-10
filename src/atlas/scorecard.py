@@ -80,11 +80,19 @@ def run_experiment(variants: list[dict], cases: list[dict]) -> pd.DataFrame:
 
 
 def summarize(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-variant scorecard, in the order the variants were run."""
+    """Per-variant scorecard, in the order the variants were run.
+
+    A successful call is one with no provider error. cost_per_1k_success_usd divides
+    total spend by successful calls only, so failures (which cost 0) cannot make a
+    flaky variant look cheaper. It is NaN when a variant has no successful call.
+    """
     grouped = df.groupby("variant", sort=False)
+    n_success = grouped["error"].apply(lambda s: s.isna().sum())
+    total_cost = grouped["cost_usd"].sum(min_count=1)  # NaN if every cost is unknown
     return pd.DataFrame(
         {
             "n": grouped.size(),
+            "n_success": n_success,
             "accuracy": grouped["correct"].mean(),
             "valid_json_rate": grouped["valid_json"].mean(),
             "error_rate": grouped["error"].apply(lambda s: s.notna().mean()),
@@ -92,5 +100,6 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
             "p95_latency_ms": grouped["latency_ms"].quantile(0.95),
             "avg_reasoning_tokens": grouped["reasoning_tokens"].mean(),
             "cost_per_1k_usd": grouped["cost_usd"].mean() * 1000,
+            "cost_per_1k_success_usd": total_cost / n_success.where(n_success > 0) * 1000,
         }
     )

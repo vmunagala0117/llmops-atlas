@@ -50,11 +50,12 @@ Wall time for the whole script was about 11.7 s, but most of that is Python star
 - Variant names must be unique. The summary groups by name, so two variants with the same name would silently be averaged into one row.
 - Calls run one after another, with an optional pause (`ATLAS_CALL_DELAY_S`, default 0) for a low token-per-minute quota. Otherwise rate-limit errors would count against the prompt, when the real cause is the quota.
 - The notebook uses the first model in `ATLAS_MODELS`. Comparing models is a later experiment.
+- The summary reports `n_success` (calls with no provider error) and `cost_per_1k_success_usd` (total spend divided by successful calls). Failed calls cost 0, so the plain average makes a flaky variant look cheaper than it is.
 
 ## Open questions and next experiment
 
 - Does lower reasoning effort keep accuracy while cutting cost?
-- Is `reasoning_effort="minimal"` actually applied? `call_model` uses `drop_params=True`, so an unsupported setting is dropped silently. If the minimal and default variants show the same reasoning tokens, it probably was not.
+- Is `reasoning_effort="minimal"` actually applied? `call_model` uses `drop_params=True`, so an unsupported setting is dropped silently. If the minimal and default variants show the same reasoning tokens, it probably was not. The notebook now prints this check on live runs.
 - Latency includes failed calls, so one timeout lifts p95 a lot. Decide whether to report latency for successful calls only as well.
 - Cost reads 0 when LiteLLM has no price for a model, which looks free rather than unknown.
 - Why did the same prompt use 0 reasoning tokens on the SDK path and 64 on the LiteLLM path? Check whether `ATLAS_MODELS` points to the same deployment, and rerun a few times to see how much reasoning varies between runs.

@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 
 from atlas import scorecard
@@ -130,3 +131,32 @@ def test_optional_delay_between_calls(monkeypatch):
     run_experiment([variant], [make_case(f"C-{i}", "13.1") for i in range(3)])
 
     assert sleeps == [0.5, 0.5]  # between calls, not before the first
+
+
+def test_cost_per_success_ignores_failed_calls(monkeypatch):
+    replies = iter(
+        [
+            fake_result('{"reason_code": "13.1"}'),  # costs 0.001
+            fake_result("", error="Timeout: slow") | {"cost_usd": 0.0},
+        ]
+    )
+    monkeypatch.setattr(scorecard, "call_model", lambda m, msgs, **p: next(replies))
+    variant = {"name": "flaky", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}}
+
+    row = summarize(run_experiment([variant], [make_case("C-1", "13.1")] * 2)).loc["flaky"]
+
+    assert row["n_success"] == 1
+    assert row["cost_per_1k_usd"] == pytest.approx(0.5)  # the failure drags the mean down
+    assert row["cost_per_1k_success_usd"] == pytest.approx(1.0)  # the real price of an answer
+
+
+def test_cost_per_success_is_nan_when_every_call_fails(monkeypatch):
+    monkeypatch.setattr(
+        scorecard, "call_model", lambda m, msgs, **p: fake_result("", error="RateLimitError: 429")
+    )
+    variant = {"name": "down", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}}
+
+    row = summarize(run_experiment([variant], [make_case("C-1", "13.1")])).loc["down"]
+
+    assert row["n_success"] == 0
+    assert pd.isna(row["cost_per_1k_success_usd"])

@@ -1,0 +1,5 @@
+variant,n,n_success,accuracy,valid_json_rate,error_rate,p50_latency_ms,p95_latency_ms,avg_reasoning_tokens,cost_per_1k_usd,cost_per_1k_success_usd
+dispute_triage@v1 effort=default,12,12,0.6666666666666666,1.0,0.0,4739.0,5904.2,368.0,1.0914791666666666,1.0914791666666666
+dispute_triage@v1 effort=minimal,12,12,0.5833333333333334,1.0,0.0,2022.5,2220.7,0.0,0.3048125,0.3048125
+dispute_triage@v2 effort=default,12,12,1.0,1.0,0.0,4052.0,5087.2,309.3333333333333,0.9778958333333334,0.9778958333333334
+dispute_triage@v2 effort=minimal,12,12,1.0,1.0,0.0,1748.5,2385.6,0.0,0.3372291666666667,0.3372291666666667

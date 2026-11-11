@@ -1,0 +1,13 @@
+# Deliberate fake values used in tests/. Used only by tests: scripts/scan_data.py
+# never reads this file. A test scans tests/ and fails on any value not listed here.
+#
+# Card numbers: published network test numbers, not real cards.
+4111111111111111
+5555555555554444
+378282246310005
+# Email: example.com is reserved for documentation.
+cardholder@example.com
+# Phone: 555-01xx numbers are reserved for fiction.
+(202) 555-0143
+# SSN: a common placeholder, used here as a format example only.
+123-45-6789

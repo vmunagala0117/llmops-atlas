@@ -7,3 +7,4 @@ pytest
 ruff
 tenacity
 faker==40.54.0  # pinned: seeded output changes between Faker versions
+pyyaml==6.0.3  # front matter in data/rules

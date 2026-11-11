@@ -1,8 +1,10 @@
-"""The single model-call path for Atlas. Every LLM call goes through call_model()."""
+"""The single model-call path for Atlas. Every LLM call goes through call_model() or embed()."""
 
+import hashlib
 import logging
 import math
 import os
+import random
 import time
 
 import litellm
@@ -20,6 +22,9 @@ MOCK_REPLY = (
 DEFAULT_TIMEOUT_S = 60
 DEFAULT_NUM_RETRIES = 2
 MAX_ERROR_CHARS = 200
+EMBED_DIM = 1536  # must match the vector(1536) column in store.py
+EMBED_BATCH = 64
+MOCK_EMBED_MODEL = "atlas-mock-embed"  # stored label for fake vectors, so they never pass as real
 
 
 def _result(model: str, **fields) -> dict:
@@ -89,3 +94,58 @@ def call_model(model: str, messages: list[dict], **params) -> dict:
         latency_ms = round((time.perf_counter() - start) * 1000)
         logger.warning("call_model failed for model %s", model, exc_info=True)
         return _result(model, latency_ms=latency_ms, error=_short_error(exc))
+
+
+def embed_model_name() -> str:
+    """The model name to record next to stored vectors."""
+    if os.environ.get("ATLAS_MOCK") == "1":
+        return MOCK_EMBED_MODEL
+    model = os.environ.get("ATLAS_EMBED_MODEL")
+    if not model:
+        raise RuntimeError("ATLAS_EMBED_MODEL is not set")
+    return model
+
+
+def _mock_vector(text: str) -> list[float]:
+    """A unit vector seeded by the text's sha256: same text, same vector, on any machine."""
+    seed = int.from_bytes(hashlib.sha256(text.encode("utf-8")).digest(), "big")
+    rng = random.Random(seed)
+    values = [rng.gauss(0.0, 1.0) for _ in range(EMBED_DIM)]
+    norm = math.sqrt(sum(v * v for v in values))
+    return [v / norm for v in values]
+
+
+def _vector(item) -> list[float]:
+    return item["embedding"] if isinstance(item, dict) else item.embedding
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    """Embed texts through LiteLLM, one vector per text, in input order.
+
+    Unlike call_model(), this raises on failure: a half-embedded batch must stop
+    ingestion rather than be stored.
+    """
+    if os.environ.get("ATLAS_MOCK") == "1":
+        return [_mock_vector(t) for t in texts]
+
+    model = embed_model_name()
+    vectors: list[list[float]] = []
+    for i in range(0, len(texts), EMBED_BATCH):
+        batch = texts[i : i + EMBED_BATCH]
+        response = litellm.embedding(
+            model=model,
+            input=batch,
+            api_base=os.environ.get("ATLAS_API_BASE"),
+            api_key=os.environ.get("ATLAS_API_KEY"),
+            timeout=DEFAULT_TIMEOUT_S,
+            num_retries=DEFAULT_NUM_RETRIES,
+        )
+        data = sorted(response.data, key=lambda d: d["index"] if isinstance(d, dict) else d.index)
+        if len(data) != len(batch):
+            raise RuntimeError(f"{model} returned {len(data)} vectors for {len(batch)} texts")
+        vectors.extend(_vector(d) for d in data)
+
+    for v in vectors:
+        if len(v) != EMBED_DIM:
+            raise RuntimeError(f"{model} returned {len(v)} dimensions, expected {EMBED_DIM}")
+    return vectors

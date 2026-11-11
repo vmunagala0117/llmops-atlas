@@ -1,3 +1,5 @@
+.venv
+.venv/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -218,3 +220,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Mock-mode scorecard outputs (CI and local test runs); live results are kept
+results/*_mock.csv

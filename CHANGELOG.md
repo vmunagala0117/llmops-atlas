@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1-data] - 2026-11-11
+
+### Added
+
+- Phase 2 walkthrough notebook `notebooks/02_data_pipeline.ipynb`, run in CI in mock mode with no database.
+- `store.describe_target()`, `store.unavailable_reason()`, `store.model_counts()`, `store.nearest()` and `llm.cosine()`.
+
+### Changed
+
+- `store.connect()` gives up after 5 seconds.
+
 ## [0.2-data] - 2026-11-11
 
 ### Added (Phase 2: data)

@@ -27,3 +27,24 @@ def test_table_enforces_metadata():
     assert "content_hash text NOT NULL UNIQUE" in sql
     assert f"vector({EMBED_DIM})" in sql
     assert "embed_model  text NOT NULL" in sql
+
+
+def test_describe_target_never_shows_the_password():
+    url = "postgresql://atlas:not-a-real-secret@dbhost:5433/atlas"  # no dot: not email-like
+
+    target = store.describe_target(url)
+
+    assert target == "host=dbhost port=5433 database=atlas"
+    assert "not-a-real-secret" not in target
+
+
+def test_describe_target_without_url(monkeypatch):
+    monkeypatch.delenv("ATLAS_DB_URL", raising=False)
+
+    assert store.describe_target() == "ATLAS_DB_URL is not set"
+
+
+def test_unavailable_reason_without_url(monkeypatch):
+    monkeypatch.delenv("ATLAS_DB_URL", raising=False)
+
+    assert store.unavailable_reason() == "ATLAS_DB_URL is not set"

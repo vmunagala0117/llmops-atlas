@@ -149,3 +149,9 @@ def embed(texts: list[str]) -> list[list[float]]:
         if len(v) != EMBED_DIM:
             raise RuntimeError(f"{model} returned {len(v)} dimensions, expected {EMBED_DIM}")
     return vectors
+
+
+def cosine(a: list[float], b: list[float]) -> float:
+    """Cosine similarity: 1 means the same direction, 0 unrelated."""
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
+    return dot / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)))

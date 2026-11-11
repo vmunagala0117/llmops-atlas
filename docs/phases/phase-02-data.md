@@ -93,6 +93,13 @@ Open questions:
 - `tests/test_validate_data.py` runs the script on a temporary copy: an invalid label, other schema breaks, a duplicate id, and a valid-looking hand edit each make it exit 1.
 - Found while building it: my first draft of the data card listed a 13.2 vs 13.7 ambiguous pair. The data has 13.7 vs 13.2 only. Counting from the files caught it.
 
+## Walkthrough notebook
+
+- `notebooks/02_data_pipeline.ipynb`: one section per step (setup, synthetic data, PII scan, rules corpus, chunking, embeddings, database, summary), each starting with what, why and what to look for. Decisions are in `docs/specs/phase-02-notebook.md`.
+- Runs in three modes: CI (mock, no database: the database sections are skipped with the reason), live (real similarities and search), and mock with a reachable database (counts shown, search skipped because the vectors are not comparable).
+- Live results: the two refund texts are the most similar pair (0.48, against 0.37 and 0.41 with the fraud text). All 38 stored rows use one model. The nearest chunks to "the merchant promised a refund that never arrived" are 13.1 "When it applies", 13.1 "When it does not apply", then 13.6 "When it applies".
+- Found while building it: I expected the search to return 13.6 first. By our own rules, a refund that was only promised is 13.1, so the search was right and my expectation was wrong. Also, `ruff check .` lints notebooks, so long lines in a code cell fail CI like any other code.
+
 ## Phase 2 result
 
-Tagged `v0.2-data`. The project now has 200 reproducible cases with a held-out split, a versioned rules corpus in pgvector, and privacy and data checks that block CI. Phase 3 builds retrieval with citations on top of the store. The items carried forward are listed in `docs/roadmap.md`.
+Tagged `v0.2-data`, plus `v0.2.1-data` for the walkthrough notebook. The project now has 200 reproducible cases with a held-out split, a versioned rules corpus in pgvector, and privacy and data checks that block CI. Phase 3 builds retrieval with citations on top of the store. The items carried forward are listed in `docs/roadmap.md`.

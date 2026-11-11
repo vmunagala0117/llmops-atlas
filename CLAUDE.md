@@ -20,7 +20,7 @@ Its first app, the Dispute Resolution Copilot, classifies card disputes into Vis
 - `config/`: `pii_allowlist.txt`, the deliberate fake values in `tests/`; used by tests only, never by the data scan
 - `docs/`: roadmap, data card, specs, phase journals, case studies (`docs/case_studies/`)
 - `docker-compose.yml`: optional Postgres with pgvector on host port 5433; the primary store is a native Postgres on 5432
-- `.github/workflows/ci.yml`: ruff, pytest, PII scan, data validation and the notebook, all with `ATLAS_MOCK=1`, no network and no database
+- `.github/workflows/ci.yml`: ruff, pytest, PII scan, data validation and every notebook, all with `ATLAS_MOCK=1`, no network and no database
 
 ## Commands
 
@@ -57,6 +57,7 @@ Mock mode needs a provider-prefixed model name (`openai/...`); bare names fail i
 - Never include tenant names, subscription IDs, real endpoints or keys in any document.
 - Plain language, no en dashes.
 - When a non-trivial problem is found and fixed, add a case study in `docs/case_studies/` (context, symptom, investigation, root cause, fix steps, result, lessons, interview version) and list it in the index.
+- Every phase has a walkthrough notebook `notebooks/NN_<phase>.ipynb`: one section per step, a short markdown cell explaining the concept before each code cell, logic imported from `src/atlas/` (never defined in the notebook), runnable cell by cell, and runnable in CI with ATLAS_MOCK=1.
 
 ## Working with me
 

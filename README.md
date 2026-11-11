@@ -14,7 +14,7 @@ Dispute analysts read free-text claims ("I was charged twice", "it never arrived
 | Phase | Tag | What it delivers |
 | --- | --- | --- |
 | 1. Baseline | `v0.1-baseline` | One model-call path, versioned prompts, scorecard, CI |
-| 2. Data | `v0.2-data` | 200-case synthetic dataset with a held-out split, rules corpus, PII scanner, pgvector ingestion, data card and data checks in CI |
+| 2. Data | `v0.2-data`, `v0.2.1-data` | 200-case synthetic dataset with a held-out split, rules corpus, PII scanner, pgvector ingestion, data card and data checks in CI, walkthrough notebook |
 
 ## What is built so far
 
@@ -23,6 +23,7 @@ Dispute analysts read free-text claims ("I was charged twice", "it never arrived
 - **Rules corpus** (`data/rules/`): one versioned markdown file per reason code, plus a guide for choosing between near-miss codes. Illustrative, not official network rules.
 - **PII scanner** (`src/atlas/pii.py`, `scripts/scan_data.py`): Luhn-checked card numbers, emails, phone numbers and SSNs in `data/` and `docs/`. It blocks CI on any finding.
 - **Ingestion** (`src/atlas/chunking.py`, `src/atlas/store.py`, `scripts/ingest_rules.py`): rules split into 38 section chunks, embedded through the same LiteLLM path, stored in Postgres with pgvector. Running it again embeds nothing.
+- **Walkthrough notebook** (`notebooks/02_data_pipeline.ipynb`): every Phase 2 step, cell by cell, with what to look for. Runs offline in CI, or live against your embedding deployment and database.
 - **Data card and checks** ([docs/data-card.md](docs/data-card.md), `scripts/validate_data.py`): what the data is, how it was made and its limits. CI checks the schema, label validity, split shares and byte-for-byte reproducibility.
 
 ### Phase 1: baseline

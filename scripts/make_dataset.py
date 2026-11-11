@@ -19,12 +19,20 @@ OUT = ROOT / "data" / "synthetic"
 FILES = {"dev": "disputes_dev.jsonl", "held_out": "disputes_heldout.jsonl"}
 
 
+def render_files(cases: list[dict]) -> dict[str, str]:
+    """File name to exact file text. Shared with validate_data.py, which compares bytes."""
+    texts = {}
+    for split, name in FILES.items():
+        lines = [json.dumps(c) for c in cases if c["split"] == split]
+        texts[name] = "\n".join(lines) + "\n"
+    return texts
+
+
 def main() -> None:
     cases = generate_disputes(N, SEED)
     OUT.mkdir(parents=True, exist_ok=True)
-    for split, name in FILES.items():
-        lines = [json.dumps(c) for c in cases if c["split"] == split]
-        (OUT / name).write_text("\n".join(lines) + "\n")
+    for name, text in render_files(cases).items():
+        (OUT / name).write_text(text)
 
     counts = Counter((c["label_reason_code"], c["split"]) for c in cases)
     print(f"{'code':<6}{'dev':>5}{'held_out':>10}")

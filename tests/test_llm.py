@@ -2,6 +2,8 @@ import json
 import math
 from types import SimpleNamespace
 
+import pytest
+
 from atlas import llm
 
 EXPECTED_KEYS = {
@@ -92,3 +94,58 @@ def test_unknown_price_is_nan_not_zero(monkeypatch):
 
     assert result["error"] is None
     assert math.isnan(result["cost_usd"])
+
+
+def test_mock_embeddings_are_deterministic_and_1536_long(monkeypatch):
+    def no_network(**kwargs):
+        raise AssertionError("mock embed must not call LiteLLM")
+
+    monkeypatch.setattr(llm.litellm, "embedding", no_network)
+
+    first = llm.embed(["refund confirmed in writing", "item never arrived"])
+    again = llm.embed(["refund confirmed in writing", "item never arrived"])
+
+    assert first == again
+    assert all(len(v) == llm.EMBED_DIM == 1536 for v in first)
+    assert first[0] != first[1]
+    assert math.isclose(sum(x * x for x in first[0]), 1.0)
+
+
+def test_mock_embed_model_is_labelled_as_mock():
+    assert llm.embed_model_name() == llm.MOCK_EMBED_MODEL
+
+
+def _fake_embedding(dim):
+    def fake(**kwargs):
+        # Returned out of order on purpose: embed() must sort by index.
+        items = [{"index": i, "embedding": [float(i)] * dim} for i in range(len(kwargs["input"]))]
+        return SimpleNamespace(data=list(reversed(items)))
+
+    return fake
+
+
+def test_live_embed_keeps_input_order(monkeypatch):
+    monkeypatch.delenv("ATLAS_MOCK")
+    monkeypatch.setenv("ATLAS_EMBED_MODEL", "openai/atlas-test-embed")
+    monkeypatch.setattr(llm.litellm, "embedding", _fake_embedding(llm.EMBED_DIM))
+
+    vectors = llm.embed(["a", "b", "c"])
+
+    assert [v[0] for v in vectors] == [0.0, 1.0, 2.0]
+
+
+def test_live_embed_rejects_wrong_dimensions(monkeypatch):
+    monkeypatch.delenv("ATLAS_MOCK")
+    monkeypatch.setenv("ATLAS_EMBED_MODEL", "openai/atlas-test-embed")
+    monkeypatch.setattr(llm.litellm, "embedding", _fake_embedding(3072))
+
+    with pytest.raises(RuntimeError, match="3072 dimensions"):
+        llm.embed(["a"])
+
+
+def test_live_embed_needs_a_model_name(monkeypatch):
+    monkeypatch.delenv("ATLAS_MOCK")
+    monkeypatch.delenv("ATLAS_EMBED_MODEL", raising=False)
+
+    with pytest.raises(RuntimeError, match="ATLAS_EMBED_MODEL"):
+        llm.embed(["a"])

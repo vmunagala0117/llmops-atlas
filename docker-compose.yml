@@ -1,0 +1,23 @@
+# Optional local Postgres with pgvector for the rules store (spec 2.4).
+# Host port 5433, so it never clashes with a native Postgres on 5432.
+# Credentials come from .env, never from this file. To use this container,
+# point ATLAS_DB_URL at port 5433 with the same user, password and database:
+#   postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@localhost:5433/<POSTGRES_DB>
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    ports:
+      - "5433:5432"  # host:container
+    volumes:
+      - atlas_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  atlas_pgdata:

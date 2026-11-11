@@ -9,7 +9,23 @@ The first app is a **Dispute Resolution Copilot** that reads a cardholder's disp
 
 Dispute analysts read free-text claims ("I was charged twice", "it never arrived", "I cancelled") and map each one to a card network reason code. Getting the code wrong delays the case or loses it. An LLM can do a first pass, but only if we can show it is accurate, cheap enough and fast enough, and keep showing it as prompts and models change. That evidence loop is what Atlas is about.
 
-## What is built so far (Phase 1)
+## Status
+
+| Phase | Tag | What it delivers |
+| --- | --- | --- |
+| 1. Baseline | `v0.1-baseline` | One model-call path, versioned prompts, scorecard, CI |
+| 2. Data | `v0.2-data` | 200-case synthetic dataset with a held-out split, rules corpus, PII scanner, pgvector ingestion, data card and data checks in CI |
+
+## What is built so far
+
+### Phase 2: data
+- **Synthetic dataset** (`src/atlas/synth.py`, `data/synthetic/`): 200 labelled disputes from 48 templates, 150 dev and 50 held out, 15% ambiguous, reproducible from seed 42. Held-out cases use templates that dev never sees.
+- **Rules corpus** (`data/rules/`): one versioned markdown file per reason code, plus a guide for choosing between near-miss codes. Illustrative, not official network rules.
+- **PII scanner** (`src/atlas/pii.py`, `scripts/scan_data.py`): Luhn-checked card numbers, emails, phone numbers and SSNs in `data/` and `docs/`. It blocks CI on any finding.
+- **Ingestion** (`src/atlas/chunking.py`, `src/atlas/store.py`, `scripts/ingest_rules.py`): rules split into 38 section chunks, embedded through the same LiteLLM path, stored in Postgres with pgvector. Running it again embeds nothing.
+- **Data card and checks** ([docs/data-card.md](docs/data-card.md), `scripts/validate_data.py`): what the data is, how it was made and its limits. CI checks the schema, label validity, split shares and byte-for-byte reproducibility.
+
+### Phase 1: baseline
 
 - **One model-call path** (`src/atlas/llm.py`): every call goes through `call_model()`, which wraps LiteLLM so the model is a config value, measures latency on the client, records tokens (including hidden reasoning tokens) and cost, and returns errors as data instead of crashing a batch run.
 - **Versioned prompts** (`src/atlas/prompts.py`): `dispute_triage@v1` (zero-shot) and `@v2` (decision rules plus one example). Released versions are frozen.
@@ -41,13 +57,33 @@ ruff check .               # lint
 
 To run the scorecard against a real model, create a `.env` file (git-ignored) with `ATLAS_API_BASE`, `ATLAS_API_KEY` and `ATLAS_MODELS` (a LiteLLM model name), then open `notebooks/01_baseline_scorecard.ipynb` in `jupyter lab`. Without credentials, set `ATLAS_MOCK=1` and `ATLAS_MODELS=openai/atlas-ci-mock` to run it offline.
 
+### Rules store (Postgres with pgvector)
+
+`scripts/ingest_rules.py` loads the rules corpus into the table named by `ATLAS_DB_URL` in `.env`. The default setup is a native Postgres with the pgvector extension on port 5432:
+
+```
+ATLAS_DB_URL=postgresql://<user>:<password>@localhost:5432/<database>
+ATLAS_EMBED_MODEL=<LiteLLM embedding model name>
+```
+
+If you use Docker instead, `docker-compose.yml` starts Postgres with pgvector on host port **5433**, so it never clashes with a native server on 5432. Add `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` to `.env`, and set the port in `ATLAS_DB_URL` to **5433** with the same user, password and database:
+
+```bash
+docker compose up -d --wait
+python scripts/ingest_rules.py   # prints the server it connected to, then ingests
+```
+
 ## Repository layout
 
 ```
 src/atlas/        reusable code imported by notebooks
 notebooks/        one notebook per phase
-data/samples/     small synthetic datasets
+data/samples/     small hand-written synthetic datasets
+data/synthetic/   generated datasets (never edited by hand)
+data/rules/       illustrative rules corpus, one file per reason code
+scripts/          dataset build, PII scan, data validation, ingestion
+config/           PII allowlist for deliberate test values
 results/          scorecard CSVs from live runs
 tests/            offline pytest suite
-docs/             roadmap, lifecycle, phase journals
+docs/             roadmap, data card, specs, phase journals, case studies
 ```

@@ -9,15 +9,18 @@ Its first app, the Dispute Resolution Copilot, classifies card disputes into Vis
 
 ## Layout
 
-- `src/atlas/`: reusable code. `llm.py` (the model-call path), `prompts.py` (versioned prompts, `render()`), `scorecard.py` (experiments and metrics), `synth.py` (synthetic dispute generator)
+- `src/atlas/`: reusable code. `llm.py` (the model-call path), `prompts.py` (versioned prompts, `render()`), `scorecard.py` (experiments and metrics), `synth.py` (synthetic dispute generator), `corpus.py` (rules loader), `pii.py` (card number and PII detection), `chunking.py` (rules into section chunks), `store.py` (Postgres and pgvector store)
 - `notebooks/`: one notebook per phase; thin, adds `src/` to `sys.path` and imports from `atlas`
 - `data/samples/`: small synthetic dispute samples (JSONL)
 - `data/synthetic/`: generated datasets (`disputes_dev.jsonl`, `disputes_heldout.jsonl`); rebuild with `python scripts/make_dataset.py`, never edit by hand
+- `data/rules/`: illustrative rules corpus, one markdown file per reason code with YAML front matter; bump `version` when editing a released file
 - `results/`: scorecard CSVs; `*_live.csv` is kept, `*_mock.csv` is git-ignored
 - `tests/`: offline pytest suite; `conftest.py` forces mock mode for every test
-- `scripts/`: manual scripts, not run in CI. Most need a real `.env`; `make_dataset.py` does not
-- `docs/`: roadmap, lifecycle, phase journals
-- `.github/workflows/ci.yml`: ruff, pytest and the notebook, all with `ATLAS_MOCK=1`
+- `scripts/`: manual scripts. Most need a real `.env`; `make_dataset.py`, `scan_data.py` (PII scan of `data/` and `docs/`) and `validate_data.py` (schema, shares, reproducible from seed 42) do not, and the last two run in CI and exit 1 on a problem. `ingest_rules.py` needs `ATLAS_DB_URL` and prints the server it connected to first
+- `config/`: `pii_allowlist.txt`, the deliberate fake values in `tests/`; used by tests only, never by the data scan
+- `docs/`: roadmap, data card, specs, phase journals, case studies (`docs/case_studies/`)
+- `docker-compose.yml`: optional Postgres with pgvector on host port 5433; the primary store is a native Postgres on 5432
+- `.github/workflows/ci.yml`: ruff, pytest, PII scan, data validation and the notebook, all with `ATLAS_MOCK=1`, no network and no database
 
 ## Commands
 
@@ -53,7 +56,7 @@ Mock mode needs a provider-prefixed model name (`openai/...`); bare names fail i
 - At each milestone tag, update README status, `docs/roadmap.md`, `CHANGELOG.md` and the phase journal.
 - Never include tenant names, subscription IDs, real endpoints or keys in any document.
 - Plain language, no en dashes.
-- When a non-trivial problem is found and fixed, add a case study in `docs/case-studies/` (context, symptom, investigation, root cause, fix steps, result, lessons, interview version) and list it in the index.
+- When a non-trivial problem is found and fixed, add a case study in `docs/case_studies/` (context, symptom, investigation, root cause, fix steps, result, lessons, interview version) and list it in the index.
 
 ## Working with me
 

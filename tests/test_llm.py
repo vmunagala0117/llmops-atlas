@@ -149,3 +149,9 @@ def test_live_embed_needs_a_model_name(monkeypatch):
 
     with pytest.raises(RuntimeError, match="ATLAS_EMBED_MODEL"):
         llm.embed(["a"])
+
+
+def test_cosine():
+    assert math.isclose(llm.cosine([1.0, 0.0], [2.0, 0.0]), 1.0)
+    assert math.isclose(llm.cosine([1.0, 0.0], [0.0, 3.0]), 0.0)
+    assert math.isclose(llm.cosine([1.0, 1.0], [-1.0, -1.0]), -1.0)

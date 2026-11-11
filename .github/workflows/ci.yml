@@ -34,3 +34,7 @@ jobs:
         run: >
           jupyter nbconvert --to notebook --execute
           notebooks/01_baseline_scorecard.ipynb --output-dir "$RUNNER_TEMP"
+      - name: Run Phase 2 walkthrough notebook
+        run: >                                # no ATLAS_DB_URL: database sections are skipped
+          jupyter nbconvert --to notebook --execute
+          notebooks/02_data_pipeline.ipynb --output-dir "$RUNNER_TEMP"

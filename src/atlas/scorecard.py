@@ -9,7 +9,7 @@ import pandas as pd
 
 from atlas.llm import call_model
 from atlas.parsing import parse_reply
-from atlas.prompts import render
+from atlas.prompts import REASON_CODES, render
 
 
 def load_cases(path: str | Path) -> list[dict]:
@@ -68,6 +68,9 @@ def run_experiment(variants: list[dict], cases: list[dict]) -> pd.DataFrame:
                     "predicted": predicted,
                     "correct": predicted == case["label_reason_code"],
                     "valid_json": predicted is not None,  # JSON with a reason_code
+                    # Broke the output contract: a reason_code, but not one of ours
+                    # ("12.6.1", "Visa 12.6"). A format problem, not a reasoning one.
+                    "format_error": predicted is not None and predicted not in REASON_CODES,
                     "error": result["error"],
                     "prompt_tokens": result["prompt_tokens"],
                     "completion_tokens": result["completion_tokens"],
@@ -95,6 +98,7 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
             "n_success": n_success,
             "accuracy": grouped["correct"].mean(),
             "valid_json_rate": grouped["valid_json"].mean(),
+            "format_error_rate": grouped["format_error"].mean(),
             "error_rate": grouped["error"].apply(lambda s: s.notna().mean()),
             "p50_latency_ms": grouped["latency_ms"].quantile(0.5),
             "p95_latency_ms": grouped["latency_ms"].quantile(0.95),

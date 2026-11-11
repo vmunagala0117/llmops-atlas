@@ -52,6 +52,7 @@ Mock mode needs a provider-prefixed model name (`openai/...`); bare names fail i
 - At each milestone tag, update README status, `docs/roadmap.md`, `CHANGELOG.md` and the phase journal.
 - Never include tenant names, subscription IDs, real endpoints or keys in any document.
 - Plain language, no en dashes.
+- When a non-trivial problem is found and fixed, add a case study in `docs/case-studies/` (context, symptom, investigation, root cause, fix steps, result, lessons, interview version) and list it in the index.
 
 ## Working with me
 

@@ -104,6 +104,7 @@ def test_summarize_has_one_row_per_variant_and_counts_failures(monkeypatch):
     assert {
         "accuracy",
         "valid_json_rate",
+        "format_error_rate",
         "error_rate",
         "p50_latency_ms",
         "p95_latency_ms",
@@ -161,3 +162,37 @@ def test_cost_per_success_is_nan_when_every_call_fails(monkeypatch):
 
     assert row["n_success"] == 0
     assert pd.isna(row["cost_per_1k_success_usd"])
+
+
+@pytest.mark.parametrize(
+    "reply, predicted, format_error",
+    [
+        ('{"reason_code": "13.1"}', "13.1", False),  # right code, right format
+        ('{"reason_code": "13.7"}', "13.7", False),  # wrong code, right format
+        ('{"reason_code": "13.1.2"}', "13.1.2", True),  # a sub-code is not one of ours
+        ('{"reason_code": "Visa 13.1"}', "Visa 13.1", True),
+        ("not json", None, False),  # no answer at all: valid_json covers it
+    ],
+)
+def test_format_error_is_separate_from_correct(monkeypatch, reply, predicted, format_error):
+    monkeypatch.setattr(scorecard, "call_model", lambda m, msgs, **p: fake_result(reply))
+    variant = {"name": "v", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}}
+
+    row = run_experiment([variant], [make_case("C-1", "13.1")]).iloc[0]
+
+    assert row["predicted"] == predicted
+    assert row["format_error"] == format_error
+    assert row["correct"] == (predicted == "13.1")
+
+
+def test_summarize_reports_format_error_rate(monkeypatch):
+    replies = iter(
+        [fake_result('{"reason_code": "13.1"}'), fake_result('{"reason_code": "13.1.2"}')]
+    )
+    monkeypatch.setattr(scorecard, "call_model", lambda m, msgs, **p: next(replies))
+    variant = {"name": "v", "prompt_id": "dispute_triage@v1", "model": "fake", "params": {}}
+
+    row = summarize(run_experiment([variant], [make_case("C-1", "13.1")] * 2)).loc["v"]
+
+    assert row["format_error_rate"] == 0.5
+    assert row["accuracy"] == 0.5

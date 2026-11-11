@@ -49,6 +49,7 @@ Wall time for the whole script was about 11.7 s, but most of that is Python star
 - The parser returns the first JSON object in a reply (trying each `{` in turn), not the span from the first `{` to the last `}`, which breaks when a reply contains two objects. Requiring a `reason_code` is a scorecard rule, so it lives in the scorecard, not the parser.
 - In mock mode `call_model` replies with a valid answer in the output format (always 13.1), so CI runs parsing and scoring too, not only the call. Mock accuracy is meaningless: it is just the share of cases labelled 13.1.
 - An unknown price is recorded as NaN, not 0, so a model missing from LiteLLM's price list reads as unknown rather than free. The summary's cost columns skip NaN, and are NaN when no call was priced.
+- Each row has `format_error`: valid JSON whose `reason_code` is not exactly one of the 8 codes (for example `"12.6.1"`). It is kept separate from `correct`, so a format problem never looks like a reasoning problem. Preventing it with structured outputs is the next experiment (spec 7d).
 - Variant names must be unique. The summary groups by name, so two variants with the same name would silently be averaged into one row.
 - Calls run one after another, with an optional pause (`ATLAS_CALL_DELAY_S`, default 0) for a low token-per-minute quota. Otherwise rate-limit errors would count against the prompt, when the real cause is the quota.
 - The notebook uses the first model in `ATLAS_MODELS`. Comparing models is a later experiment.

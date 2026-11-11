@@ -6,3 +6,4 @@ ipykernel
 pytest
 ruff
 tenacity
+faker==40.54.0  # pinned: seeded output changes between Faker versions

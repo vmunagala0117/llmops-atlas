@@ -9,12 +9,13 @@ Its first app, the Dispute Resolution Copilot, classifies card disputes into Vis
 
 ## Layout
 
-- `src/atlas/`: reusable code. `llm.py` (the model-call path), `prompts.py` (versioned prompts, `render()`), `scorecard.py` (experiments and metrics)
+- `src/atlas/`: reusable code. `llm.py` (the model-call path), `prompts.py` (versioned prompts, `render()`), `scorecard.py` (experiments and metrics), `synth.py` (synthetic dispute generator)
 - `notebooks/`: one notebook per phase; thin, adds `src/` to `sys.path` and imports from `atlas`
 - `data/samples/`: small synthetic dispute samples (JSONL)
+- `data/synthetic/`: generated datasets (`disputes_dev.jsonl`, `disputes_heldout.jsonl`); rebuild with `python scripts/make_dataset.py`, never edit by hand
 - `results/`: scorecard CSVs; `*_live.csv` is kept, `*_mock.csv` is git-ignored
 - `tests/`: offline pytest suite; `conftest.py` forces mock mode for every test
-- `scripts/`: manual scripts that need a real `.env` (not run in CI)
+- `scripts/`: manual scripts, not run in CI. Most need a real `.env`; `make_dataset.py` does not
 - `docs/`: roadmap, lifecycle, phase journals
 - `.github/workflows/ci.yml`: ruff, pytest and the notebook, all with `ATLAS_MOCK=1`
 
